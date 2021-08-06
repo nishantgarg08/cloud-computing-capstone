@@ -1,0 +1,16 @@
+spring:
+  kafka:
+    bootstrap-servers: mundev000963.bpc.broadcom.net:9092
+app:
+  topic:
+    name: person-info
+    hotname: person-info-arrow
+    messageCount: 10
+    sleep: 5000
+  service:
+    consumer: localhost:8080
+    hotpartion: localhost:8081
+arrow:
+  batch:
+    milliseconds: 100
+    chunkSize: 5120

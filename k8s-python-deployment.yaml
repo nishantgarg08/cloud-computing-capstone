@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-normal
+  namespace: apps
+  labels:
+    app: python-normal
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: python-normal
+      labels:
+        app: python-normal
+    spec:
+      containers:
+        - name: flask
+          image: bhaab01/ccc:python-hot-partition
+          imagePullPolicy: Always
+          command:
+            - python3
+            - /tmp/partition-status-controller.py
+        - name: python-normal
+          image: bhaab01/ccc:python-hot-partition
+          imagePullPolicy: Always
+          command:
+            - python3
+            - /tmp/normal-processor.py
+            - my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+            - http://consumer:8080/consumer/python-normal
+
+      restartPolicy: Always
+  selector:
+    matchLabels:
+      app: python-normal
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-normal
+  namespace: apps
+spec:
+  selector:
+    app: python-normal
+  ports:
+    - port: 5000
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-pyarrow
+  namespace: apps
+  labels:
+    app: python-pyarrow
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: python-pyarrow
+      labels:
+        app: python-pyarrow
+    spec:
+      containers:
+        - name: python-pyarrow
+          image: bhaab01/ccc:python-hot-partition
+          imagePullPolicy: Always
+          command:
+            - python3
+            - /tmp/pyarrow-processor.py
+            - my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+            - http://consumer:8080/consumer/pyarrow
+      restartPolicy: Always
+  selector:
+    matchLabels:
+      app: python-pyarrow

@@ -1,0 +1,9 @@
+spring:
+  kafka:
+    #bootstrap-servers: mundev000963.bpc.broadcom.net:9092
+    bootstrap-servers: ec2-54-152-188-36.compute-1.amazonaws.com:9092
+app:
+  topic:
+    name: person-info
+    messageCount: 10
+    sleep: 5

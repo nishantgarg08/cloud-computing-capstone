@@ -1,0 +1,233 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sender
+  namespace: apps
+  labels:
+    app: sender
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: sender
+      labels:
+        app: sender
+    spec:
+      containers:
+        - name: sender
+          image: bhaab01/ccc:hot-partition
+          imagePullPolicy: Always
+          command:
+            - java
+            - --add-opens
+            - java.base/java.lang=ALL-UNNAMED
+            - --add-opens
+            - java.base/java.nio=ALL-UNNAMED
+            - --add-modules=jdk.incubator.vector
+            - -Dspring.kafka.bootstrap-servers=ec2-54-152-188-36.compute-1.amazonaws.com:9092
+            - -Dapp.topic.messageCount=10000
+            - -Dapp.topic.sleep=5000
+            - -jar
+            - /producer.jar
+
+      restartPolicy: Always
+  selector:
+    matchLabels:
+      app: sender
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sender
+  namespace: apps
+spec:
+  selector:
+    app: sender
+  ports:
+    - port: 8080
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hp-detector
+  namespace: apps
+  labels:
+    app: hp-detector
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: hp-detector
+      labels:
+        app: hp-detector
+    spec:
+      containers:
+        - name: hp-detector
+          image: bhaab01/ccc:hot-partition
+          imagePullPolicy: Always
+          command:
+            - java
+            - --add-opens
+            - java.base/java.lang=ALL-UNNAMED
+            - --add-opens
+            - java.base/java.nio=ALL-UNNAMED
+            - --add-modules=jdk.incubator.vector
+            - -Dspring.kafka.bootstrap-servers=ec2-54-152-188-36.compute-1.amazonaws.com:9092
+            - -Dapp.service.arrow=arrow-writer:8080
+            - -jar
+            - /hot-partion-detector.jar
+
+      restartPolicy: Always
+  selector:
+    matchLabels:
+      app: hp-detector
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hp-detector
+  namespace: apps
+spec:
+  selector:
+    app: hp-detector
+  ports:
+    - port: 8080
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: arrow-writer
+  namespace: apps
+  labels:
+    app: arrow-writer
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: arrow-writer
+      labels:
+        app: arrow-writer
+    spec:
+      containers:
+        - name: arrow-writer
+          image: bhaab01/ccc:hot-partition
+          imagePullPolicy: Always
+          command:
+            - java
+            - --add-opens
+            - java.base/java.lang=ALL-UNNAMED
+            - --add-opens
+            - java.base/java.nio=ALL-UNNAMED
+            - --add-modules=jdk.incubator.vector
+            - -Dspring.kafka.bootstrap-servers=ec2-54-152-188-36.compute-1.amazonaws.com:9092
+            - -Darrow.batch.chunksize=5120
+            - -Darrow.batch.milliseconds=5
+            - -jar
+            - /arrow-converer.jar
+
+      restartPolicy: Always
+  selector:
+    matchLabels:
+      app: arrow-writer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: arrow-writer
+  namespace: apps
+spec:
+  selector:
+    app: arrow-writer
+  ports:
+    - port: 8080
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer
+  namespace: apps
+  labels:
+    app: consumer
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: consumer
+      labels:
+        app: consumer
+    spec:
+      containers:
+        - name: consumer
+          image: bhaab01/ccc:hot-partition
+          imagePullPolicy: Always
+          command:
+            - java
+            - --add-opens
+            - java.base/java.lang=ALL-UNNAMED
+            - --add-opens
+            - java.base/java.nio=ALL-UNNAMED
+            - --add-modules=jdk.incubator.vector
+            - -Dspring.kafka.bootstrap-servers=ec2-54-152-188-36.compute-1.amazonaws.com:9092
+            - -Dapp.service.consumer=consumer:8080
+            - -Dapp.service.hotpartion=hp-detector:8080
+            - -jar
+            - /consumer.jar
+
+      restartPolicy: Always
+  selector:
+    matchLabels:
+      app: consumer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: consumer
+  namespace: apps
+spec:
+  selector:
+    app: consumer
+  ports:
+    - port: 8080
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitoring
+  namespace: apps
+  labels:
+    app: monitoring
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: monitoring
+      labels:
+        app: monitoring
+    spec:
+      containers:
+
+        - name: monitoring
+          image: bhaab01/ccc:hot-partition
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: apmenv_agentManager_url_1
+              value: https://apmgw.dxi-eu1.saas.broadcom.com
+            - name: apmenv_agentManager_credential
+              value: eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhZ2VudCI6dHJ1ZSwiZXhwIjo5MjIzMzcyMDM2ODU0Nzc1LCJ0aWQiOjEyLCJqdGkiOiIyMDJlMzUwOS0yNDA5LTQ1YTgtOTAyNC1lNjAyN2FkMWRiYWMifQ.As29t7dovG82B48TKDuvA0LYmjsvpdTnjGx4mBPNJXAZYJzIPXJae8DLQyTkphoBf75Ted6xj4Z9YkD0b-3YEQ
+            - name: apmenv_agentName
+              value: HotPartition
+            - name: apmenv_introscope_agent_hostName
+              value: Capstone
+          command:
+            - java
+            - -jar
+            - /monitoring.jar
+      restartPolicy: Always
+  selector:
+    matchLabels:
+      app: monitoring
